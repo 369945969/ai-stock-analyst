@@ -29,4 +29,4 @@
 
 ## 技术参考
 详细的计算公式、列名定义及执行准则请参阅 [SKILL.md](file:///Users/jack/.agents/skills/a-share-analysis/SKILL.md)。
-列名已根据 [stocks.sql](file:///Users/jack/.agents/skills/a-share-analysis/references/stocks.sql) 的 DDL 进行完美对齐。
+列名信息实时从数据库获取，确保使用最新的表结构。
