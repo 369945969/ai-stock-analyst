@@ -1,82 +1,49 @@
 # -*- codeing = utf-8 -*-
-# @Time :2023/7/13 11:33
-# @File : test2.4.py
-# @Software: PyCharm
+# @Time :2026/03/07 (Updated)
+# @Author: Trae Agent
+# @File : getAllNews.py
 
-from bs4 import BeautifulSoup
 import requests
 import re
 import datetime
-import time
-import pandas as pd
 import sys
 import json
 
 global_data = []  # 全局数据列表
 
 def get_news(stock_code, start_date=None, end_date=None):
-    base_url = 'http://guba.eastmoney.com/list,{},1,f{}.html'.format(stock_code, '{}')
-
-    content_list = []  # 存储内容的列表
-
-    for page in ['']:  # 爬取第一页
-        url = base_url.format(page)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'}
-        try:
-            req = requests.get(url, headers=headers, timeout=10)
-            req.raise_for_status()
-        except Exception as e:
-            # print(f"Error fetching {url}: {e}")
-            return []
+    # 新闻列表 URL (type=1 is for news/posts)
+    url = 'http://guba.eastmoney.com/list,{},1,f.html'.format(stock_code)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
+    try:
+        req = requests.get(url, headers=headers, timeout=10)
+        req.raise_for_status()
+        html = req.text
+    except Exception as e:
+        return []
         
-        soup = BeautifulSoup(req.text, 'html.parser')
-        s1 = []
-        s2 = []
-        main_list = soup.find('div', id='mainlist')
-        if not main_list:
-            return []
-            
-        s2_original = main_list.find_all('div', class_='update')
+    # 从 script 标签中提取 listdata
+    match = re.search(r'var listdata\s*=\s*(\{.*?\});', html, re.DOTALL)
+    if not match:
+        return []
+        
+    try:
+        data = json.loads(match.group(1))
+        post_list = data.get('article_list', [])
+    except Exception as e:
+        return []
 
-        # 提取网页内时间数据
-        for div in s2_original:
-            date_text = div.text.strip()
-            # 兼容更多日期，不仅限于 07-1x
-            match = re.search(r'\d{2}-\d{2}\s+\d{2}:\d{2}', date_text)
-            if match:
-                content = div.find_next('div', class_='update')
-                if content:
-                    content_list.append(content)
-
-    # 筛选时间数据
-    result = []
-    for content in content_list:
-        parent_content = content.parent
-        siblings = parent_content.previous_siblings
-        for sibling in siblings:
-            if sibling.name == 'td':
-                titles = sibling.find_all('div', class_='title')
-                for title in titles:
-                    if title.string is not None:
-                        s1.append(title.string.strip())
-                    if content.string is not None:
-                        s2.append(content.string.strip())
-
-    s12 = [[x, y] for x, y in zip(s1, s2)]
-
-    current_year = datetime.datetime.now().year
-    news = [row[0][:-7] if row[0].endswith(')') else row[0] for row in s12]
-    dates = [f'{current_year}-{row[1][:5]}' for row in s12]
-
-    # 使用函数参数中的日期范围
+    # 准备日期范围
     if start_date and isinstance(start_date, str):
         try:
             start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
         except:
-            start_dt = datetime.datetime.now().replace(day=1)
+            start_dt = datetime.datetime.now() - datetime.timedelta(days=7)
     else:
-        start_dt = start_date or datetime.datetime.now().replace(day=1)
+        start_dt = start_date or (datetime.datetime.now() - datetime.timedelta(days=7))
         
     if end_date and isinstance(end_date, str):
         try:
@@ -85,43 +52,40 @@ def get_news(stock_code, start_date=None, end_date=None):
             end_dt = datetime.datetime.now()
     else:
         end_dt = end_date or datetime.datetime.now()
-        
-    result = [[stock_code, x, y] for x, y in zip(news, dates) if
-              start_dt <= datetime.datetime.strptime(y, '%Y-%m-%d') <= end_dt]
 
-    # 将结果追加到全局数据列表
+    result = []
+    for post in post_list:
+        title = post.get('post_title', '')
+        # 使用最后修改时间或发布时间
+        last_time_str = post.get('post_last_time') or post.get('post_publish_time')
+        if not last_time_str:
+            continue
+            
+        try:
+            # 格式可能是 "2026-03-05 19:52:28"
+            post_dt = datetime.datetime.strptime(last_time_str[:10], '%Y-%m-%d')
+            if start_dt <= post_dt <= end_dt:
+                result.append([stock_code, title, last_time_str[:10]])
+        except:
+            continue
+
     global_data.extend(result)
-
     return result
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        # CLI 模式: python GetAllNews2.py <stock_code> [start_date] [end_date]
+        # CLI 模式: python getAllNews.py <stock_code> [start_date] [end_date]
         stock_code = sys.argv[1]
         start_date = sys.argv[2] if len(sys.argv) > 2 else None
         end_date = sys.argv[3] if len(sys.argv) > 3 else None
         
-        # 处理股票代码格式，确保是纯数字
+        # 处理股票代码格式
         if '.' in stock_code:
             stock_code = stock_code.split('.')[0]
+        # 兼容 sh600519 格式
+        stock_code = re.sub(r'^[a-zA-Z]+', '', stock_code)
             
         res = get_news(stock_code, start_date, end_date)
-        # 直接输出 JSON，方便 Agent 解析
         print(json.dumps(res, ensure_ascii=False))
     else:
-        # 原有逻辑兼容
-        start_date = datetime.datetime(2023, 7, 13)
-        end_date = datetime.datetime(2023, 7, 14)
-        print("正在读取股票excel文件...")
-        try:
-            df = pd.read_excel('stockInfo.xlsx')
-            for stock_code in df['股票代码'][:-1]:
-                print(stock_code)
-                result = get_news(stock_code, start_date, end_date)
-                print(result)
-                time.sleep(2)
-            
-            df_result = pd.DataFrame(global_data, columns=['股票代码', '新闻标题', '日期'])
-            df_result.to_csv('News_result.csv', index=False, encoding='utf_8_sig')
-        except FileNotFoundError:
-            print("stockInfo.xlsx 不存在，请通过命令行参数调用。")
+        print("Usage: python getAllNews.py <stock_code> [start_date] [end_date]")
