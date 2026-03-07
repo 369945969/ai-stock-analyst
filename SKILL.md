@@ -108,7 +108,13 @@ Agent 在编写 SQL 或分析数据时应遵循以下公式：
    - 优先使用 `WITH` 子句 (CTE) 或子查询来先过滤行数。
    - 仅查询公式所需的必要字段，避免 `SELECT *`。
    - 对于 `FCF` 的跨表计算（`cash_flow` + `stock_profit_sheet`），确保连接键为 `股票代码` 和 `报告期`。
-   - **[关键提醒]**: `asset_balance_sheet` 表中的 `股票代码` 字段**没有后缀**（仅包含数字，如 `600036`）。在与其他带有后缀的表（如 `sw_index_stocks`, `daily_kline`, `cash_flow` 等）进行 `JOIN` 时，必须使用 `SUBSTRING_INDEX(股票代码, '.', 1)` 或类似方法去掉后缀，以确保关联正确。
+   - **[关键提醒 - 股票代码格式]**: 各表中的 `股票代码` 格式极不统一，关联时必须进行格式转换：
+     - `asset_balance_sheet`, `stock_profit_sheet`, `cash_flow`: 纯数字（如 `600036`）。
+     - `sw_index_stocks`: 带大写后缀（如 `600036.SH`）。
+     - `daily_kline`: 带小写前缀（如 `sh600036`）。
+     - **关联建议**: 统一转换为纯数字进行 `JOIN`。例如：`SUBSTRING_INDEX(sw_index_stocks.股票代码, '.', 1)` 或 `SUBSTRING(daily_kline.股票代码, 3)`。
+   - **[关键提醒 - 字符集冲突]**: `sw_index_stocks` 与财务报表表（如 `stock_profit_sheet`）的字符集校验规则（Collation）不同。在 `JOIN` 时必须显式指定校验规则以避免 `Illegal mix of collations` 错误：
+     - **示例**: `ON SUBSTRING_INDEX(s.股票代码, '.', 1) COLLATE utf8mb4_general_ci = p.股票代码`。
 5. **SQL 容错与降级策略 (防止超时)**:
    - **默认全局查询**: 初始查询应尝试获取全量符合条件的数据。
    - **超时降级机制**: 若发生执行超时，Agent 应立即启动降级策略。首先在查询中加入 `LIMIT 100` 限制。
