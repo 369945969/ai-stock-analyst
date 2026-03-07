@@ -1,0 +1,53 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "quant": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "deepseek",
+      "options": {
+        "baseURL": "https://api.deepseek.com",
+        "apiKey": "sk-2c25a0afe4a64f40b6b260a9fe9eebf0"
+      },
+      "models": {
+        "agent": {
+          "id": "deepseek-reasoner",
+          "name": "DeepSeek Reasoner",
+          "options": {
+            "maxTokens": 4096
+          }
+        }
+      }
+    }
+  },
+  "mcp": {
+    "mysql-query": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@benborla29/mcp-server-mysql"
+      ],
+      "environment": {
+        "MYSQL_HOST": "76.13.11.164",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "remote_user",
+        "MYSQL_PASS": "1qazxsw2",
+        "MYSQL_DB": "stocks"
+      },
+      "enabled": true,
+      "timeout": 120000
+    },
+    "stocks-query": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-server-sqlite",
+        "--database",
+        "/opt/sqlite/stocks.sqlite"
+      ],
+      "enabled": true,
+      "timeout": 120000
+    }
+  }
+}
