@@ -113,7 +113,8 @@ Agent 在编写 SQL 或分析数据时应遵循以下公式：
      - `sw_index_stocks`: 带大写后缀（如 `600036.SH`）。
      - `daily_kline`: 带小写前缀（如 `sh600036`）。
      - **关联建议**: 统一转换为纯数字进行 `JOIN`。例如：`SUBSTRING_INDEX(sw_index_stocks.股票代码, '.', 1)` 或 `SUBSTRING(daily_kline.股票代码, 3)`。
-   - **[关键提醒 - 字符集冲突]**: `sw_index_stocks` 与财务报表表（如 `stock_profit_sheet`）的字符集校验规则（Collation）不同。在 `JOIN` 时必须显式指定校验规则以避免 `Illegal mix of collations` 错误：
+   - **[关键提醒 - 字符集冲突处理]**: 虽然 `股票代码` 的字符集已逐步统一，但在不同表（如 `sw_index_stocks` 与财务报表表）之间进行 `JOIN` 时，若遇到 `Illegal mix of collations` 错误，**仍需显式指定校验规则**以确保查询成功：
+        - **推荐做法**: 在 `JOIN` 条件中加入 `COLLATE utf8mb4_general_ci`。
         - **示例**: `ON SUBSTRING_INDEX(s.股票代码, '.', 1) COLLATE utf8mb4_general_ci = p.股票代码`。
       - **[关键提醒 - 日期时间偏移]**: 数据库中的 `报告期` 存储为 UTC 时间（如 `2025-12-30T16:00:00.000Z`），这对应北京时间的 `2025-12-31 00:00:00`。
         - **显示 vs 存储冲突**: 尽管 ISO 字符串显示为 30 号，但数据库内部可能将其识别为 31 号的起始。
