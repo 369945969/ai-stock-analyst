@@ -16,7 +16,10 @@
             "maxTokens": 4096
           }
         }
-      }
+      },
+      "skills": [
+        "SKILL.md"
+      ]
     }
   }
 }
