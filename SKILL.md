@@ -120,8 +120,10 @@ Agent 在编写 SQL 或分析数据时应遵循以下公式：
    - **取消限制**: 严禁在初选阶段使用 `LIMIT` 限制。必须一次性获取目标行业或全市场的符合条件的股票，避免因分页导致的样本遗漏。
 4. **SQL 编写与排序建议 (SQL & Ordering)**:
    - **字段校验 (Field Validation)**: Agent 在编写 SQL 前 **必须** 执行 `DESCRIBE` 命令校验字段名。
-   - **关键字段修正**: 注意 `daily_kline` 表中记录时间的字段通常为 `报告期` 而非 `日期`。
-   - **示例**: `WHERE 报告期 = (SELECT MAX(报告期) FROM daily_kline)`。
+   - **时间字段区分 (Crucial)**:
+     - **财务表** (`asset_balance_sheet`, `stock_profit_sheet`, `cash_flow`): 记录时间的字段名为 **`报告期`**。
+     - **行情表** (`daily_kline`): 记录时间的字段名为 **`交易日期`** (严禁在行情表中使用 `报告期` 或 `日期`)。
+   - **示例**: `WHERE 交易日期 = (SELECT MAX(交易日期) FROM daily_kline)`。
    - **解决 UNION 排序报错**: 在使用 `UNION` 或 `UNION ALL` 时，若需要对最终结果进行复杂排序（如 `CASE WHEN`），**必须将 UNION 语句整体包裹在子查询或 CTE 中**，然后再在最外层执行 `ORDER BY`。
    - **示例**: 
      ```sql
