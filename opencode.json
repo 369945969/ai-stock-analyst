@@ -18,19 +18,5 @@
         }
       }
     }
-  },
-  "mcp": {
-    "stocks-query": {
-      "type": "local",
-      "command": ["npx", "-y", "mcp-server-duckdb", "--db", "/opt/duckdb/performance_data.db"],
-      "enabled": true,
-      "timeout": 120000
-    },
-    "kline-query": {
-      "type": "local",
-      "command": ["npx", "-y", "mcp-server-duckdb", "--db", "/opt/duckdb/daily_k.db"],
-      "enabled": true,
-      "timeout": 120000
-    }
   }
 }
